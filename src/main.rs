@@ -52,7 +52,6 @@ impl Default for Package {
 
 fn build() -> Result<(), Box<dyn Error>> {
     let config: Config = toml::from_str(&read_to_string(TOML)?)?;
-    println!("{:?}", config.dependencies);
     let f = File::open(format!("{}/{}", SRC, MAIN))?;
     let reader = BufReader::new(f);
     let lines = reader.lines();
