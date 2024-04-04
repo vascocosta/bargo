@@ -31,3 +31,31 @@ cargo build --release
 ## Install
 
 Simply copy `bargo/target/release/bargo` to a folder in your path (ex: `$HOME/bin`).
+
+## Usage example
+
+```
+bargo new my_basic_project_name
+
+cd my_basic_project_name
+
+edit src/main.bas
+
+bargo build
+```
+
+## Configuration example
+
+Your BASIC project is configured by editing `my_basic_project_name/Bargo.toml` like this:
+
+```
+[package]
+name = "reminder"
+carriage_return = true
+numbering = 10
+version = "0.1.0"
+
+[dependencies]
+hello = "0.1.0"
+goodbye = "0.1.0"
+```
