@@ -7,6 +7,7 @@ use std::{
     io::{BufRead, BufReader, Write},
 };
 
+const HELLO: &str = "PRINT \"Hello World!\"";
 const MAIN: &str = "main.bas";
 const SRC: &str = "src";
 const TOML: &str = "Bargo.toml";
@@ -99,9 +100,11 @@ fn new(name: &str) -> Result<(), Box<dyn Error>> {
 
     let mut config = Config::default();
     let mut output = File::create(format!("{}/{}", name, TOML))?;
-
     config.package.name = String::from(name);
     write!(output, "{}", toml::to_string(&config)?)?;
+
+    let mut output = File::create(format!("{}/{}/{}", name, SRC, MAIN))?;
+    write!(output, "{}", HELLO)?;
 
     Ok(())
 }
@@ -110,13 +113,13 @@ fn read_deps(deps: HashMap<String, String>) -> Result<Vec<String>, Box<dyn Error
     let mut lines: Vec<String> = Vec::new();
 
     for filename in deps.keys() {
-        let f = File::open(format!("{}/{}.bas", SRC, filename))?;
-
         lines.push(format!(":"));
         lines.push(format!("REM {}", "=".repeat(76)));
         lines.push(format!("REM IMPORT {}.BAS", filename.to_uppercase()));
         lines.push(format!("REM {}", "=".repeat(76)));
         lines.push(format!(":"));
+
+        let f = File::open(format!("{}/{}.bas", SRC, filename))?;
 
         for line in BufReader::new(f).lines() {
             lines.push(line?)
