@@ -112,6 +112,12 @@ fn read_deps(deps: HashMap<String, String>) -> Result<Vec<String>, Box<dyn Error
     for filename in deps.keys() {
         let f = File::open(format!("{}/{}.bas", SRC, filename))?;
 
+        lines.push(format!(":"));
+        lines.push(format!("REM {}", "=".repeat(76)));
+        lines.push(format!("REM IMPORT {}.BAS", filename.to_uppercase()));
+        lines.push(format!("REM {}", "=".repeat(76)));
+        lines.push(format!(":"));
+
         for line in BufReader::new(f).lines() {
             lines.push(line?)
         }
