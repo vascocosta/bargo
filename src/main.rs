@@ -19,14 +19,14 @@ enum Action {
 #[derive(Deserialize, Serialize)]
 struct Config {
     package: Package,
-    dependencies: HashMap<String, String>,
+    dependencies: Option<HashMap<String, String>>,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Self {
             package: Package::default(),
-            dependencies: HashMap::default(),
+            dependencies: Some(HashMap::default()),
         }
     }
 }
@@ -53,22 +53,25 @@ impl Default for Package {
 fn build() -> Result<(), Box<dyn Error>> {
     let config: Config = toml::from_str(&read_to_string(TOML)?)?;
     let f = File::open(format!("{}/{}", SRC, MAIN))?;
-    let reader = BufReader::new(f);
-    let lines = reader.lines();
-    let numbered_lines: Result<Vec<String>, Box<dyn Error>> = lines
+    let mut lines: Vec<String> = Vec::new();
+    let dep_lines = read_deps(config.dependencies.unwrap_or_default())?;
+
+    for line in BufReader::new(f).lines() {
+        lines.push(line?);
+    }
+
+    for line in dep_lines {
+        lines.push(line);
+    }
+
+    let numbered_lines: Vec<String> = lines
+        .into_iter()
         .enumerate()
-        .map(|(number, line)| match line {
-            Ok(line) => Ok(format!(
-                "{} {}",
-                (number + 1) * config.package.numbering,
-                line
-            )),
-            Err(err) => Err(err.into()), // If a line can't be read, convert error.
-        })
+        .map(|(number, line)| format!("{} {}", (number + 1) * config.package.numbering, line))
         .collect();
     let mut output = File::create(format!("{}.bas", config.package.name))?;
 
-    for line in &numbered_lines? {
+    for line in &numbered_lines {
         write!(
             output,
             "{}{}",
@@ -94,6 +97,20 @@ fn new(name: &str) -> Result<(), Box<dyn Error>> {
     write!(output, "{}", toml::to_string(&config)?)?;
 
     Ok(())
+}
+
+fn read_deps(deps: HashMap<String, String>) -> Result<Vec<String>, Box<dyn Error>> {
+    let mut lines: Vec<String> = Vec::new();
+
+    for filename in deps.keys() {
+        let f = File::open(format!("{}/{}.bas", SRC, filename))?;
+
+        for line in BufReader::new(f).lines() {
+            lines.push(line?)
+        }
+    }
+
+    Ok(lines)
 }
 
 fn show_usage(action: Option<Action>) {
