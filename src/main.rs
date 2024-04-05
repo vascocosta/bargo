@@ -64,10 +64,17 @@ fn build() -> Result<(), Box<dyn Error>> {
         lines.push(line);
     }
 
+    let padding = (lines.len() * config.package.numbering).to_string().len();
     let numbered_lines: Vec<String> = lines
         .into_iter()
         .enumerate()
-        .map(|(number, line)| format!("{} {}", (number + 1) * config.package.numbering, line))
+        .map(|(number, line)| {
+            format!(
+                "{: >padding$} {}",
+                (number + 1) * config.package.numbering,
+                line
+            )
+        })
         .collect();
     let mut output = File::create(format!("{}.bas", config.package.name))?;
 
