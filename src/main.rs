@@ -52,8 +52,11 @@ impl Default for Package {
 }
 
 fn build() -> Result<(), Box<dyn Error>> {
-    let config: Config = toml::from_str(&read_to_string(TOML)?)?;
-    let f = File::open(format!("{}/{}", SRC, MAIN))?;
+    let config: Config =
+        toml::from_str(&read_to_string(TOML).map_err(|_| format!("Could not open {}", TOML))?)
+            .map_err(|_| format!("Syntax error in {}", TOML))?;
+    let path = format!("{}/{}", SRC, MAIN);
+    let f = File::open(&path).map_err(|_| format!("Could not open {}", &path))?;
     let mut lines: Vec<String> = Vec::new();
     let dep_lines = read_deps(config.dependencies.unwrap_or_default())?;
 
@@ -77,7 +80,8 @@ fn build() -> Result<(), Box<dyn Error>> {
             )
         })
         .collect();
-    let mut output = File::create(format!("{}.bas", config.package.name))?;
+    let path = format!("{}.bas", config.package.name);
+    let mut output = File::create(&path).map_err(|_| format!("Could not create {}", &path))?;
 
     for line in &numbered_lines {
         write!(
@@ -89,22 +93,30 @@ fn build() -> Result<(), Box<dyn Error>> {
             } else {
                 "\n"
             }
-        )?;
+        )
+        .map_err(|_| format!("Could not write to {}", &path))?;
     }
 
     Ok(())
 }
 
 fn new(name: &str) -> Result<(), Box<dyn Error>> {
-    fs::create_dir_all(format!("{}/{}", name, SRC))?;
+    let path = format!("{}/{}", name, SRC);
+    fs::create_dir_all(&path).map_err(|_| format!("Could not create {}", &path))?;
 
     let mut config = Config::default();
-    let mut output = File::create(format!("{}/{}", name, TOML))?;
+    let path = format!("{}/{}", name, TOML);
+    let mut output = File::create(&path).map_err(|_| format!("Could not create {}", &path))?;
     config.package.name = String::from(name);
-    write!(output, "{}", toml::to_string(&config)?)?;
+    write!(
+        output,
+        "{}",
+        toml::to_string(&config).map_err(|_| format!("Could not write to {}", &path))?
+    )?;
 
-    let mut output = File::create(format!("{}/{}/{}", name, SRC, MAIN))?;
-    write!(output, "{}", HELLO)?;
+    let path = format!("{}/{}/{}", name, SRC, MAIN);
+    let mut output = File::create(&path).map_err(|_| format!("Could not create {}", &path))?;
+    write!(output, "{}", HELLO).map_err(|_| format!("Could not write to {}", &path))?;
 
     Ok(())
 }
@@ -119,7 +131,8 @@ fn read_deps(deps: HashMap<String, String>) -> Result<Vec<String>, Box<dyn Error
         lines.push(format!("REM {}", "=".repeat(76)));
         lines.push(format!(":"));
 
-        let f = File::open(format!("{}/{}.bas", SRC, filename))?;
+        let path = format!("{}/{}.bas", SRC, filename);
+        let f = File::open(&path).map_err(|_| format!("Could not open {}", &path))?;
 
         for line in BufReader::new(f).lines() {
             lines.push(line?)
@@ -137,18 +150,26 @@ fn show_usage(action: Option<Action>) {
     }
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() {
     let args: Vec<String> = env::args().skip(1).collect();
 
     match args.get(0) {
         Some(action) => match action.as_str() {
-            "build" => build(),
+            "build" => {
+                if let Err(error) = build() {
+                    eprintln!("{error}");
+                }
+            }
             "new" => match args.get(1) {
-                Some(name) => new(&name),
-                None => Ok(show_usage(Some(Action::NEW))),
+                Some(name) => {
+                    if let Err(error) = new(&name) {
+                        eprintln!("{error}");
+                    }
+                }
+                None => show_usage(Some(Action::NEW)),
             },
-            _ => Ok(show_usage(Some(Action::UNKNOWN))),
+            _ => show_usage(Some(Action::UNKNOWN)),
         },
-        None => Ok(show_usage(None)),
+        None => show_usage(None),
     }
 }
