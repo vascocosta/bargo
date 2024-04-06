@@ -143,11 +143,15 @@ fn read_deps(deps: HashMap<String, String>) -> Result<Vec<String>, Box<dyn Error
 }
 
 fn show_usage(action: Option<Action>) {
+    println!("BASIC build system and package manager\n");
     match action {
-        Some(Action::NEW) => println!("Usage: new <name>"),
-        Some(Action::UNKNOWN) => println!("Usage: <new|build>"),
-        None => println!("Usage: <new|build>"),
+        Some(Action::NEW) => println!("Usage: bargo new <name>\n"),
+        Some(Action::UNKNOWN) => println!("Usage: bargo <new|build>\n"),
+        None => println!("Usage: bargo <new|build>\n"),
     }
+    println!("Commands:");
+    println!("\tbuild\tBuild the current package");
+    println!("\tnew\tCreate a new Bargo package")
 }
 
 fn main() {
