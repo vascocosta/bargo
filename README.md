@@ -38,7 +38,7 @@ Bargo allows you to create a project template for your BASIC program, so that ed
 
 Follow the steps below to create a new project template, cd into the project, edit some files with your favourite editor (replace $editor with your favourite editor) and finally build it.
 
-```
+```bash
 bargo new age
 cd age
 $editor Bargo.toml 
@@ -64,7 +64,7 @@ Below you can see listing for all the files used in this example, plus the final
 
 Your BASIC project is configured by editing `age/Bargo.toml`:
 
-```
+```toml
 [package]
 name = "age"
 carriage_return = true
@@ -79,7 +79,7 @@ utils = "0.1.0
 
 Your main source file is created by editing `age/src/main.bas`:
 
-```
+```basic
 PROC_INIT_SCREEN
 PRINT "Hello!"
 PRINT
@@ -94,7 +94,7 @@ END
 
 ### src/utils.bas
 
-```
+```basic
 DEF PROC_INIT_SCREEN
 MODE 3
 CLS
