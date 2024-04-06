@@ -106,6 +106,17 @@ fn build() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+fn clean() -> Result<(), Box<dyn Error>> {
+    let config: Config =
+        toml::from_str(&read_to_string(TOML).map_err(|_| format!("Could not open {}", TOML))?)
+            .map_err(|_| format!("Syntax error in {}", TOML))?;
+    let path = format!("{}.bas", &config.package.name);
+    fs::remove_file(&path).map_err(|_| format!("Could not remove {}", &path))?;
+    println!("\tRemoved {}.bas", &config.package.name);
+
+    Ok(())
+}
+
 fn new(name: &str) -> Result<(), Box<dyn Error>> {
     let path = format!("{}/{}", name, SRC);
     fs::create_dir_all(&path).map_err(|_| format!("Could not create {}", &path))?;
@@ -159,6 +170,7 @@ fn show_usage(action: Option<Action>) {
     }
     println!("Commands:");
     println!("\tbuild\tBuild the current package");
+    println!("\tclean\tRemove the generated file");
     println!("\tnew\tCreate a new Bargo package")
 }
 
@@ -170,6 +182,11 @@ fn main() {
             "build" => {
                 if let Err(error) = build() {
                     eprintln!("{error}");
+                }
+            }
+            "clean" => {
+                if let Err(error) = clean() {
+                    eprintln!("{error}")
                 }
             }
             "new" => match args.get(1) {
