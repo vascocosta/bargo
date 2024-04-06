@@ -2,6 +2,8 @@
 
 BASIC build system and package manager.
 
+Bargo is a tool to make it simpler to program in the BASIC programming language. Early versions of BASIC, like for instance BBC BASIC up to version 4 required the user to include line numbers and didn't allow the code to be split into different files, one for each dependency/module. Bargo abstracts these and other limitations from the programmer, allowing to code without using line numbers and spliting the code into multiple files, one per dependency/module.
+
 ## Features
 
 * Automatic line numbering
@@ -22,9 +24,7 @@ Follow these steps to fetch and compile the source of `bargo` and its `dependenc
 
 ```
 git clone https://github.com/vascocosta/bargo.git
-
 cd bargo
-
 cargo build --release
 ```
 
@@ -56,7 +56,7 @@ bargo build
 
 The final step builds your project by merging `src/main.bas` with all the dependencies/modules your project uses into a single file called `age.bas` at the root of your project folder and automatically numbering the lines for you.
 
-In this simple example there's only `src/utils.bas`, but you could use any number of dependencies/modules. For each dependency/module you should create a bas file with the name of that dependency/module inside `src` and add the name to the `[dependencies]` section of `Bargo.toml`, plus its vesion. For now the version isn't important, but it will be used in the future. For example, if you were to add another dependency/module called `math`, you would need to create `src/math.bas` with math related procedures/functions and then add `math = "0.1.0"` to `Bargo.toml` under the `[dependencies]` section.
+In this simple example there's only `src/utils.bas`, but you could use any number of dependencies/modules. For each dependency/module you should create a bas file with the name of that dependency/module inside `src` and add the name to the `[dependencies]` section of `Bargo.toml`, plus its version. For now the version isn't important, but it will be used in the future. For example, if you were to add another dependency/module called `math`, you would need to create `src/math.bas` with math related procedures/functions and then add `math = "0.1.0"` to `Bargo.toml` under the `[dependencies]` section.
 
 Below you can see a listing of all the files used in this example, plus the final source code of `age.bas` that is generated for you.
 
