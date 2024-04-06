@@ -55,6 +55,10 @@ fn build() -> Result<(), Box<dyn Error>> {
     let config: Config =
         toml::from_str(&read_to_string(TOML).map_err(|_| format!("Could not open {}", TOML))?)
             .map_err(|_| format!("Syntax error in {}", TOML))?;
+    println!(
+        "\tBuilding {} v{}",
+        &config.package.name, &config.package.version
+    );
     let path = format!("{}/{}", SRC, MAIN);
     let f = File::open(&path).map_err(|_| format!("Could not open {}", &path))?;
     let mut lines: Vec<String> = Vec::new();
@@ -97,6 +101,8 @@ fn build() -> Result<(), Box<dyn Error>> {
         .map_err(|_| format!("Could not write to {}", &path))?;
     }
 
+    println!("\tFinished");
+
     Ok(())
 }
 
@@ -117,6 +123,8 @@ fn new(name: &str) -> Result<(), Box<dyn Error>> {
     let path = format!("{}/{}/{}", name, SRC, MAIN);
     let mut output = File::create(&path).map_err(|_| format!("Could not create {}", &path))?;
     write!(output, "{}", HELLO).map_err(|_| format!("Could not write to {}", &path))?;
+
+    println!("\tCreated `{}` package", name);
 
     Ok(())
 }
