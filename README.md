@@ -34,7 +34,7 @@ Simply copy `bargo/target/release/bargo` to a folder in your path (ex: `$HOME/bi
 
 ## Usage example
 
-Bargo allows you to create a project template for your BASIC program, so that editing your source code is simpler.
+Bargo allows you to create a project template for your BASIC program, so that editing your code is simpler.
 
 Follow the steps below to create a new project template, cd into the project, edit some files with your favourite editor (replace $editor with your favourite editor) and finally build it.
 
