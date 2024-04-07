@@ -117,25 +117,32 @@ fn clean() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn new(name: &str) -> Result<(), Box<dyn Error>> {
-    let path = format!("{}/{}", name, SRC);
+fn new(name: Option<&str>) -> Result<(), Box<dyn Error>> {
+    let path = format!("{}/{}", name.unwrap_or("."), SRC);
     fs::create_dir_all(&path).map_err(|_| format!("Could not create {}", &path))?;
 
     let mut config = Config::default();
-    let path = format!("{}/{}", name, TOML);
+    let path = format!("{}/{}", name.unwrap_or("."), TOML);
     let mut output = File::create(&path).map_err(|_| format!("Could not create {}", &path))?;
-    config.package.name = String::from(name);
+    config.package.name = if let Some(name) = name {
+        String::from(name)
+    } else {
+        let current_dir = env::current_dir().map_err(|_| "Could not get cwd")?;
+        let file_name = current_dir.file_name().ok_or("Could not get cwd")?;
+        let name = file_name.to_str().ok_or("Could not get cwd")?;
+        String::from(name)
+    };
     write!(
         output,
         "{}",
         toml::to_string(&config).map_err(|_| format!("Could not write to {}", &path))?
     )?;
 
-    let path = format!("{}/{}/{}", name, SRC, MAIN);
+    let path = format!("{}/{}/{}", name.unwrap_or("."), SRC, MAIN);
     let mut output = File::create(&path).map_err(|_| format!("Could not create {}", &path))?;
     write!(output, "{}", HELLO).map_err(|_| format!("Could not write to {}", &path))?;
 
-    println!("\tCreated `{}` package", name);
+    println!("\tCreated `{}` package", config.package.name);
 
     Ok(())
 }
@@ -171,6 +178,7 @@ fn show_usage(action: Option<Action>) {
     println!("Commands:");
     println!("\tbuild\tBuild the current package");
     println!("\tclean\tRemove the generated file");
+    println!("\tinit\tCreate a new Bargo package in an existing directory");
     println!("\tnew\tCreate a new Bargo package")
 }
 
@@ -189,9 +197,14 @@ fn main() {
                     eprintln!("{error}")
                 }
             }
+            "init" => {
+                if let Err(error) = new(None) {
+                    eprintln!("{error}");
+                }
+            }
             "new" => match args.get(1) {
                 Some(name) => {
-                    if let Err(error) = new(&name) {
+                    if let Err(error) = new(Some(&name)) {
                         eprintln!("{error}");
                     }
                 }
