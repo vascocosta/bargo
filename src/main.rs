@@ -5,6 +5,7 @@ use std::{
     error::Error,
     fs::{self, read_to_string, File},
     io::{BufRead, BufReader, Write},
+    path::Path,
 };
 
 const HELLO: &str = "PRINT \"Hello World!\"";
@@ -119,6 +120,11 @@ fn clean() -> Result<(), Box<dyn Error>> {
 
 fn new(name: Option<&str>) -> Result<(), Box<dyn Error>> {
     let path = format!("{}/{}", name.unwrap_or("."), SRC);
+
+    if Path::new(&path).exists() {
+        return Err("Package already exists".into());
+    }
+
     fs::create_dir_all(&path).map_err(|_| format!("Could not create {}", &path))?;
 
     let mut config = Config::default();
