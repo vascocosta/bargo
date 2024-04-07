@@ -6,8 +6,10 @@ use std::{
     fs::{self, read_to_string, File},
     io::{BufRead, BufReader, Write},
     path::Path,
+    process::Command,
 };
 
+const GIT: &str = "git";
 const HELLO: &str = "PRINT \"Hello World!\"";
 const MAIN: &str = "main.bas";
 const SRC: &str = "src";
@@ -149,6 +151,12 @@ fn new(name: Option<&str>) -> Result<(), Box<dyn Error>> {
     write!(output, "{}", HELLO).map_err(|_| format!("Could not write to {}", &path))?;
 
     println!("\tCreated `{}` package", config.package.name);
+
+    Command::new(GIT)
+        .arg("init")
+        .current_dir(name.unwrap_or("."))
+        .output()
+        .map_err(|_| "Could not run git to init repo")?;
 
     Ok(())
 }
