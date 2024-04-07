@@ -10,8 +10,10 @@ Bargo is a tool to make it simpler to program in the BASIC programming language.
 * Customisable line numbering
 * Customisable newline chars
 * Dependency/module management
+* Project cleaning
 * Project creation
 * Project build
+* Project tracking with Git
 
 ## Build
 
