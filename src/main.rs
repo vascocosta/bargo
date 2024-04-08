@@ -5,10 +5,13 @@ use std::{
     error::Error,
     fs::{self, read_to_string, File},
     io::{BufRead, BufReader, Write},
-    path::Path,
+    path::{Path, PathBuf},
     process::Command,
 };
 
+const AUTOEXEC: &str = "autoexec.txt";
+const EMU: &str = "fab-agon-emulator";
+const EMU_ARGS: &str = "-f";
 const GIT: &str = "git";
 const HELLO: &str = "PRINT \"Hello World!\"";
 const MAIN: &str = "main.bas";
@@ -40,15 +43,22 @@ struct Package {
     name: String,
     carriage_return: bool,
     numbering: usize,
+    emu_path: PathBuf,
     version: String,
 }
 
 impl Default for Package {
     fn default() -> Self {
+        let home = env::var("HOME").unwrap_or(String::from("./"));
+        let mut emu_path = PathBuf::new();
+        emu_path.push(&home);
+        emu_path.push(EMU);
+
         Self {
             name: String::new(),
             carriage_return: true,
             numbering: 10,
+            emu_path,
             version: String::from("0.1.0"),
         }
     }
@@ -116,6 +126,49 @@ fn clean() -> Result<(), Box<dyn Error>> {
     let path = format!("{}.bas", &config.package.name);
     fs::remove_file(&path).map_err(|_| format!("Could not remove {}", &path))?;
     println!("\tRemoved {}.bas", &config.package.name);
+
+    Ok(())
+}
+
+fn emulator() -> Result<(), Box<dyn Error>> {
+    let config: Config =
+        toml::from_str(&read_to_string(TOML).map_err(|_| format!("Could not open {}", TOML))?)
+            .map_err(|_| format!("Syntax error in {}", TOML))?;
+
+    // Check if we can find the emulator folder.
+    let mut path = config.package.emu_path;
+
+    if !path.exists() {
+        return Err(format!("Could not find emulator in {}", path.to_string_lossy()).into());
+    }
+
+    // Copy source code to emulator folder.
+    path.push(format!("sdcard/{}.bas", &config.package.name));
+    fs::copy(format!("{}.bas", &config.package.name), &path)
+        .map_err(|_| "Could not copy source to emulator")?;
+
+    // Generate autoexec.txt on the emulator.
+    path.pop();
+    path.push(AUTOEXEC);
+    let mut output =
+        File::create(&path).map_err(|_| format!("Could not create {}", &path.to_string_lossy()))?;
+    write!(
+        output,
+        "load bbcbasic.bin\r\nrun . /{}.bas\r\n",
+        &config.package.name
+    )
+    .map_err(|_| format!("Could not write to {}", &path.to_string_lossy()))?;
+
+    // Execute the emulator with the source code.
+    path.pop();
+    path.pop();
+    let current_dir = path.clone();
+    path.push(EMU);
+    Command::new(path)
+        .arg(EMU_ARGS)
+        .current_dir(current_dir)
+        .output()
+        .map_err(|_| "Could not run emulator")?;
 
     Ok(())
 }
@@ -192,6 +245,7 @@ fn show_usage(action: Option<Action>) {
     println!("Commands:");
     println!("\tbuild\tBuild the current package");
     println!("\tclean\tRemove the generated file");
+    println!("\temu\tRun the code inside an emulator");
     println!("\tinit\tCreate a new Bargo package in an existing directory");
     println!("\tnew\tCreate a new Bargo package")
 }
@@ -208,6 +262,11 @@ fn main() {
             }
             "clean" => {
                 if let Err(error) = clean() {
+                    eprintln!("{error}")
+                }
+            }
+            "emulator" | "emu" => {
+                if let Err(error) = emulator() {
                     eprintln!("{error}")
                 }
             }
