@@ -64,175 +64,251 @@ impl Default for Package {
     }
 }
 
-fn build() -> Result<(), Box<dyn Error>> {
-    let config: Config =
-        toml::from_str(&read_to_string(TOML).map_err(|_| format!("Could not open {}", TOML))?)
-            .map_err(|_| format!("Syntax error in {}", TOML))?;
-    println!(
-        "\tBuilding {} v{}",
-        &config.package.name, &config.package.version
-    );
-    let path = format!("{}/{}", SRC, MAIN);
-    let f = File::open(&path).map_err(|_| format!("Could not open {}", &path))?;
-    let mut lines: Vec<String> = Vec::new();
-    let dep_lines = read_deps(config.dependencies.unwrap_or_default())?;
+trait BargoCommand {
+    fn config() -> Result<Config, Box<dyn Error>> {
+        let config =
+            toml::from_str(&read_to_string(TOML).map_err(|_| format!("Could not open {}", TOML))?)
+                .map_err(|_| format!("Syntax error in {}", TOML))?;
 
-    for line in BufReader::new(f).lines() {
-        lines.push(line?);
+        Ok(config)
     }
+    fn execute(&self) -> Result<(), Box<dyn Error>>;
+    fn usage() -> String;
+}
 
-    for line in dep_lines {
-        lines.push(line);
-    }
+struct CleanCommand {
+    config: Config,
+}
 
-    let padding = (lines.len() * config.package.numbering).to_string().len();
-    let numbered_lines: Vec<String> = lines
-        .into_iter()
-        .enumerate()
-        .map(|(number, line)| {
-            format!(
-                "{: >padding$} {}",
-                (number + 1) * config.package.numbering,
-                line
-            )
+impl CleanCommand {
+    fn new() -> Result<Self, Box<dyn Error>> {
+        Ok(Self {
+            config: Self::config()?,
         })
-        .collect();
-    let path = format!("{}.bas", config.package.name);
-    let mut output = File::create(&path).map_err(|_| format!("Could not create {}", &path))?;
+    }
+}
 
-    for line in &numbered_lines {
-        write!(
-            output,
-            "{}{}",
-            line,
-            if config.package.carriage_return {
-                "\r\n"
-            } else {
-                "\n"
+impl BargoCommand for CleanCommand {
+    fn execute(&self) -> Result<(), Box<dyn Error>> {
+        let path = format!("{}.bas", self.config.package.name);
+        fs::remove_file(&path).map_err(|_| format!("Could not remove {}", &path))?;
+        println!("\tRemoved {}.bas", self.config.package.name);
+
+        Ok(())
+    }
+
+    fn usage() -> String {
+        String::from("\tclean\tRemove the generated file")
+    }
+}
+
+struct BuildCommand {
+    config: Config,
+}
+
+impl BuildCommand {
+    fn new() -> Result<Self, Box<dyn Error>> {
+        Ok(Self {
+            config: Self::config()?,
+        })
+    }
+
+    fn read_deps(&self, deps: &HashMap<String, String>) -> Result<Vec<String>, Box<dyn Error>> {
+        let mut lines: Vec<String> = Vec::new();
+
+        for filename in deps.keys() {
+            lines.push(format!(":"));
+            lines.push(format!("REM {}", "=".repeat(76)));
+            lines.push(format!("REM IMPORT {}.BAS", filename.to_uppercase()));
+            lines.push(format!("REM {}", "=".repeat(76)));
+            lines.push(format!(":"));
+
+            let path = format!("{}/{}.bas", SRC, filename);
+            let f = File::open(&path).map_err(|_| format!("Could not open {}", &path))?;
+
+            for line in BufReader::new(f).lines() {
+                lines.push(line?)
             }
-        )
-        .map_err(|_| format!("Could not write to {}", &path))?;
+        }
+
+        Ok(lines)
     }
-
-    println!("\tFinished");
-
-    Ok(())
 }
 
-fn clean() -> Result<(), Box<dyn Error>> {
-    let config: Config =
-        toml::from_str(&read_to_string(TOML).map_err(|_| format!("Could not open {}", TOML))?)
-            .map_err(|_| format!("Syntax error in {}", TOML))?;
-    let path = format!("{}.bas", &config.package.name);
-    fs::remove_file(&path).map_err(|_| format!("Could not remove {}", &path))?;
-    println!("\tRemoved {}.bas", &config.package.name);
-
-    Ok(())
-}
-
-fn emulator() -> Result<(), Box<dyn Error>> {
-    let config: Config =
-        toml::from_str(&read_to_string(TOML).map_err(|_| format!("Could not open {}", TOML))?)
-            .map_err(|_| format!("Syntax error in {}", TOML))?;
-
-    // Check if we can find the emulator folder.
-    let mut path = config.package.emu_path;
-
-    if !path.exists() {
-        return Err(format!("Could not find emulator in {}", path.to_string_lossy()).into());
-    }
-
-    // Copy source code to emulator folder.
-    path.push(format!("sdcard/{}.bas", &config.package.name));
-    fs::copy(format!("{}.bas", &config.package.name), &path)
-        .map_err(|_| "Could not copy source to emulator")?;
-
-    // Generate autoexec.txt on the emulator.
-    path.pop();
-    path.push(AUTOEXEC);
-    let mut output =
-        File::create(&path).map_err(|_| format!("Could not create {}", &path.to_string_lossy()))?;
-    write!(
-        output,
-        "load bbcbasic.bin\r\nrun . /{}.bas\r\n",
-        &config.package.name
-    )
-    .map_err(|_| format!("Could not write to {}", &path.to_string_lossy()))?;
-
-    // Execute the emulator with the source code.
-    path.pop();
-    path.pop();
-    let current_dir = path.clone();
-    path.push(EMU);
-    Command::new(path)
-        .arg(EMU_ARGS)
-        .current_dir(current_dir)
-        .output()
-        .map_err(|_| "Could not run emulator")?;
-
-    Ok(())
-}
-
-fn new(name: Option<&str>) -> Result<(), Box<dyn Error>> {
-    let path = format!("{}/{}", name.unwrap_or("."), SRC);
-
-    if Path::new(&path).exists() {
-        return Err("Package already exists".into());
-    }
-
-    fs::create_dir_all(&path).map_err(|_| format!("Could not create {}", &path))?;
-
-    let mut config = Config::default();
-    let path = format!("{}/{}", name.unwrap_or("."), TOML);
-    let mut output = File::create(&path).map_err(|_| format!("Could not create {}", &path))?;
-    config.package.name = if let Some(name) = name {
-        String::from(name)
-    } else {
-        let current_dir = env::current_dir().map_err(|_| "Could not get cwd")?;
-        let file_name = current_dir.file_name().ok_or("Could not get cwd")?;
-        let name = file_name.to_str().ok_or("Could not get cwd")?;
-        String::from(name)
-    };
-    write!(
-        output,
-        "{}",
-        toml::to_string(&config).map_err(|_| format!("Could not write to {}", &path))?
-    )?;
-
-    let path = format!("{}/{}/{}", name.unwrap_or("."), SRC, MAIN);
-    let mut output = File::create(&path).map_err(|_| format!("Could not create {}", &path))?;
-    write!(output, "{}", HELLO).map_err(|_| format!("Could not write to {}", &path))?;
-
-    println!("\tCreated `{}` package", config.package.name);
-
-    Command::new(GIT)
-        .arg("init")
-        .current_dir(name.unwrap_or("."))
-        .output()
-        .map_err(|_| "Could not run git to init repo")?;
-
-    Ok(())
-}
-
-fn read_deps(deps: HashMap<String, String>) -> Result<Vec<String>, Box<dyn Error>> {
-    let mut lines: Vec<String> = Vec::new();
-
-    for filename in deps.keys() {
-        lines.push(format!(":"));
-        lines.push(format!("REM {}", "=".repeat(76)));
-        lines.push(format!("REM IMPORT {}.BAS", filename.to_uppercase()));
-        lines.push(format!("REM {}", "=".repeat(76)));
-        lines.push(format!(":"));
-
-        let path = format!("{}/{}.bas", SRC, filename);
+impl BargoCommand for BuildCommand {
+    fn execute(&self) -> Result<(), Box<dyn Error>> {
+        println!(
+            "\tBuilding {} v{}",
+            self.config.package.name, self.config.package.version
+        );
+        let path = format!("{}/{}", SRC, MAIN);
         let f = File::open(&path).map_err(|_| format!("Could not open {}", &path))?;
+        let mut lines: Vec<String> = Vec::new();
+        let dependencies = self.config.dependencies.clone().unwrap_or_default();
+        let dep_lines = self.read_deps(&dependencies)?;
 
         for line in BufReader::new(f).lines() {
-            lines.push(line?)
+            lines.push(line?);
         }
+
+        for line in dep_lines {
+            lines.push(line);
+        }
+
+        let padding = (lines.len() * self.config.package.numbering)
+            .to_string()
+            .len();
+        let numbered_lines: Vec<String> = lines
+            .into_iter()
+            .enumerate()
+            .map(|(number, line)| {
+                format!(
+                    "{: >padding$} {}",
+                    (number + 1) * self.config.package.numbering,
+                    line
+                )
+            })
+            .collect();
+        let path = format!("{}.bas", self.config.package.name);
+        let mut output = File::create(&path).map_err(|_| format!("Could not create {}", &path))?;
+
+        for line in &numbered_lines {
+            write!(
+                output,
+                "{}{}",
+                line,
+                if self.config.package.carriage_return {
+                    "\r\n"
+                } else {
+                    "\n"
+                }
+            )
+            .map_err(|_| format!("Could not write to {}", &path))?;
+        }
+
+        println!("\tFinished");
+
+        Ok(())
     }
 
-    Ok(lines)
+    fn usage() -> String {
+        String::from("\tbuild\tBuild the current package")
+    }
+}
+
+struct NewCommand<'a> {
+    name: Option<&'a str>,
+}
+
+impl<'a> NewCommand<'a> {
+    fn new(name: Option<&'a str>) -> Self {
+        Self { name }
+    }
+}
+
+impl<'a> BargoCommand for NewCommand<'a> {
+    fn execute(&self) -> Result<(), Box<dyn Error>> {
+        let name = self.name.unwrap_or(".");
+        let path = format!("{}/{}", name, SRC);
+
+        if Path::new(&path).exists() {
+            return Err("Package already exists".into());
+        }
+
+        fs::create_dir_all(&path).map_err(|_| format!("Could not create {}", &path))?;
+
+        let mut config = Config::default();
+        let path = format!("{}/{}", name, TOML);
+        let mut output = File::create(&path).map_err(|_| format!("Could not create {}", &path))?;
+        config.package.name = if name != "." {
+            String::from(name)
+        } else {
+            let current_dir = env::current_dir().map_err(|_| "Could not get cwd")?;
+            let file_name = current_dir.file_name().ok_or("Could not get cwd")?;
+            let name = file_name.to_str().ok_or("Could not get cwd")?;
+            String::from(name)
+        };
+        write!(
+            output,
+            "{}",
+            toml::to_string(&config).map_err(|_| format!("Could not write to {}", &path))?
+        )?;
+
+        let path = format!("{}/{}/{}", name, SRC, MAIN);
+        let mut output = File::create(&path).map_err(|_| format!("Could not create {}", &path))?;
+        write!(output, "{}", HELLO).map_err(|_| format!("Could not write to {}", &path))?;
+
+        println!("\tCreated `{}` package", config.package.name);
+
+        Command::new(GIT)
+            .arg("init")
+            .current_dir(name)
+            .output()
+            .map_err(|_| "Could not run git to init repo")?;
+
+        Ok(())
+    }
+
+    fn usage() -> String {
+        format!(
+            "{}\n{}",
+            "\tinit\tCreate a new Bargo package in an existing directory",
+            "\tnew\tCreate a new Bargo package"
+        )
+    }
+}
+
+struct EmuCommand {
+    config: Config,
+}
+
+impl EmuCommand {
+    fn new() -> Result<Self, Box<dyn Error>> {
+        Ok(Self {
+            config: Self::config()?,
+        })
+    }
+}
+
+impl BargoCommand for EmuCommand {
+    fn execute(&self) -> Result<(), Box<dyn Error>> {
+        let mut path = self.config.package.emu_path.clone();
+
+        if !path.exists() {
+            return Err(format!("Could not find emulator in {}", path.to_string_lossy()).into());
+        }
+
+        path.push(format!("sdcard/{}.bas", self.config.package.name));
+        fs::copy(format!("{}.bas", self.config.package.name), &path)
+            .map_err(|_| "Could not copy source to emulator")?;
+
+        path.pop();
+        path.push(AUTOEXEC);
+        let mut output = File::create(&path)
+            .map_err(|_| format!("Could not create {}", &path.to_string_lossy()))?;
+        write!(
+            output,
+            "load bbcbasic.bin\r\nrun . /{}.bas\r\n",
+            self.config.package.name
+        )
+        .map_err(|_| format!("Could not write to {}", &path.to_string_lossy()))?;
+
+        path.pop();
+        path.pop();
+        let current_dir = path.clone();
+        path.push(EMU);
+        Command::new(path)
+            .arg(EMU_ARGS)
+            .current_dir(current_dir)
+            .output()
+            .map_err(|_| "Could not run emulator")?;
+
+        Ok(())
+    }
+
+    fn usage() -> String {
+        String::from("\temu\tRun the code inside an emulator")
+    }
 }
 
 fn show_usage(action: Option<Action>) {
@@ -243,11 +319,10 @@ fn show_usage(action: Option<Action>) {
         None => println!("Usage: bargo <new|build>\n"),
     }
     println!("Commands:");
-    println!("\tbuild\tBuild the current package");
-    println!("\tclean\tRemove the generated file");
-    println!("\temu\tRun the code inside an emulator");
-    println!("\tinit\tCreate a new Bargo package in an existing directory");
-    println!("\tnew\tCreate a new Bargo package")
+    println!("{}", BuildCommand::usage());
+    println!("{}", CleanCommand::usage());
+    println!("{}", EmuCommand::usage());
+    println!("{}", NewCommand::usage());
 }
 
 fn main() {
@@ -255,29 +330,42 @@ fn main() {
 
     match args.get(0) {
         Some(action) => match action.as_str() {
-            "build" => {
-                if let Err(error) = build() {
-                    eprintln!("{error}");
+            "build" => match BuildCommand::new() {
+                Ok(build_command) => {
+                    if let Err(error) = build_command.execute() {
+                        eprintln!("{error}")
+                    }
                 }
-            }
-            "clean" => {
-                if let Err(error) = clean() {
-                    eprintln!("{error}")
+                Err(error) => eprintln!("{error}"),
+            },
+            "clean" => match CleanCommand::new() {
+                Ok(clean_command) => {
+                    if let Err(error) = clean_command.execute() {
+                        eprintln!("{error}")
+                    }
                 }
-            }
-            "emulator" | "emu" => {
-                if let Err(error) = emulator() {
-                    eprintln!("{error}")
+                Err(error) => eprintln!("{error}"),
+            },
+            "emulator" | "emu" => match EmuCommand::new() {
+                Ok(emu_command) => {
+                    if let Err(error) = emu_command.execute() {
+                        eprintln!("{error}")
+                    }
                 }
-            }
+                Err(error) => eprintln!("{error}"),
+            },
             "init" => {
-                if let Err(error) = new(None) {
+                let new_command = NewCommand::new(None);
+
+                if let Err(error) = new_command.execute() {
                     eprintln!("{error}");
                 }
             }
             "new" => match args.get(1) {
                 Some(name) => {
-                    if let Err(error) = new(Some(&name)) {
+                    let new_command = NewCommand::new(Some(name));
+
+                    if let Err(error) = new_command.execute() {
                         eprintln!("{error}");
                     }
                 }
