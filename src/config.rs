@@ -1,5 +1,8 @@
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, env, path::PathBuf};
+use std::fmt::Display;
+use std::io::Write;
+use std::path::Path;
+use std::{collections::HashMap, env, error::Error, fs::File, path::PathBuf};
 
 const EMU: &str = "fab-agon-emulator";
 
@@ -7,6 +10,22 @@ const EMU: &str = "fab-agon-emulator";
 pub struct Config {
     pub package: Package,
     pub dependencies: Option<HashMap<String, String>>,
+}
+
+impl Config {
+    pub fn write<P>(&self, path: P) -> Result<(), Box<dyn Error>>
+    where
+        P: AsRef<Path> + Display,
+    {
+        let mut output = File::create(&path).map_err(|_| format!("Could not create {}", path))?;
+        write!(
+            output,
+            "{}",
+            toml::to_string(&self).map_err(|_| format!("Could not write to {}", path))?
+        )?;
+
+        Ok(())
+    }
 }
 
 impl Default for Config {

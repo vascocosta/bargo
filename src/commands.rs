@@ -173,7 +173,6 @@ impl<'a> BargoCommand for NewCommand<'a> {
 
         let mut config = Config::default();
         let path = format!("{}/{}", name, TOML);
-        let mut output = File::create(&path).map_err(|_| format!("Could not create {}", &path))?;
         config.package.name = if name != "." {
             String::from(name)
         } else {
@@ -182,11 +181,7 @@ impl<'a> BargoCommand for NewCommand<'a> {
             let name = file_name.to_str().ok_or("Could not get cwd")?;
             String::from(name)
         };
-        write!(
-            output,
-            "{}",
-            toml::to_string(&config).map_err(|_| format!("Could not write to {}", &path))?
-        )?;
+        config.write(path)?;
 
         let path = format!("{}/{}/{}", name, SRC, MAIN);
         let mut output = File::create(&path).map_err(|_| format!("Could not create {}", &path))?;
