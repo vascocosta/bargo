@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
+use std::fs::read_to_string;
 use std::io::Write;
 use std::path::Path;
 use std::{collections::HashMap, env, error::Error, fs::File, path::PathBuf};
@@ -13,6 +14,17 @@ pub struct Config {
 }
 
 impl Config {
+    pub fn read<P>(path: P) -> Result<Config, Box<dyn Error>>
+    where
+        P: AsRef<Path> + Display,
+    {
+        let config =
+            toml::from_str(&read_to_string(&path).map_err(|_| format!("Could not open {}", path))?)
+                .map_err(|_| format!("Syntax error in {}", path))?;
+
+        Ok(config)
+    }
+
     pub fn write<P>(&self, path: P) -> Result<(), Box<dyn Error>>
     where
         P: AsRef<Path> + Display,

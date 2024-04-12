@@ -3,7 +3,7 @@ use std::{
     collections::HashMap,
     env,
     error::Error,
-    fs::{self, read_to_string, File},
+    fs::{self, File},
     io::{BufRead, BufReader, Write},
     path::Path,
     process::Command,
@@ -19,13 +19,6 @@ const SRC: &str = "src";
 const TOML: &str = "Bargo.toml";
 
 pub trait BargoCommand {
-    fn config() -> Result<Config, Box<dyn Error>> {
-        let config =
-            toml::from_str(&read_to_string(TOML).map_err(|_| format!("Could not open {}", TOML))?)
-                .map_err(|_| format!("Syntax error in {}", TOML))?;
-
-        Ok(config)
-    }
     fn execute(&self) -> Result<(), Box<dyn Error>>;
     fn usage() -> String;
 }
@@ -37,7 +30,7 @@ pub struct CleanCommand {
 impl CleanCommand {
     pub fn new() -> Result<Self, Box<dyn Error>> {
         Ok(Self {
-            config: Self::config()?,
+            config: Config::read(TOML)?,
         })
     }
 }
@@ -63,7 +56,7 @@ pub struct BuildCommand {
 impl BuildCommand {
     pub fn new() -> Result<Self, Box<dyn Error>> {
         Ok(Self {
-            config: Self::config()?,
+            config: Config::read(TOML)?,
         })
     }
 
@@ -214,7 +207,7 @@ pub struct EmuCommand {
 impl EmuCommand {
     pub fn new() -> Result<Self, Box<dyn Error>> {
         Ok(Self {
-            config: Self::config()?,
+            config: Config::read(TOML)?,
         })
     }
 }
