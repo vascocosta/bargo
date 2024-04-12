@@ -1,5 +1,6 @@
 use crate::config::Config;
 use std::{
+    cell::RefCell,
     collections::HashMap,
     env,
     error::Error,
@@ -250,5 +251,35 @@ impl BargoCommand for EmuCommand {
 
     fn usage() -> String {
         String::from("\temu\tRun the code inside an emulator")
+    }
+}
+
+pub struct AddCommand<'a> {
+    dependency: &'a str,
+    config: RefCell<Config>,
+}
+
+impl<'a> AddCommand<'a> {
+    pub fn new(dependency: &'a str) -> Result<Self, Box<dyn Error>> {
+        Ok(Self {
+            config: RefCell::new(Config::read(TOML)?),
+            dependency,
+        })
+    }
+}
+
+impl<'a> BargoCommand for AddCommand<'a> {
+    fn execute(&self) -> Result<(), Box<dyn Error>> {
+        let mut config = self.config.borrow_mut();
+        let mut dependencies = config.dependencies.clone().unwrap_or_default();
+        dependencies.insert(String::from(self.dependency), String::from("0.1.0"));
+        config.dependencies = Some(dependencies);
+        config.write(TOML)?;
+
+        Ok(())
+    }
+
+    fn usage() -> String {
+        String::from("\tadd\tAdd dependencies to this package")
     }
 }
