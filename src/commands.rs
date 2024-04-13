@@ -240,12 +240,8 @@ impl BargoCommand for EmuCommand {
         path.push(AUTOEXEC);
         let mut output = File::create(&path)
             .map_err(|_| format!("Could not create {}", &path.to_string_lossy()))?;
-        write!(
-            output,
-            "load /bin/bbcbasic.bin\r\nrun . /{}.bas\r\n",
-            self.config.package.name
-        )
-        .map_err(|_| format!("Could not write to {}", &path.to_string_lossy()))?;
+        write!(output, "bbcbasic /{}.bas\r\n", self.config.package.name)
+            .map_err(|_| format!("Could not write to {}", &path.to_string_lossy()))?;
 
         path.pop();
         path.pop();
