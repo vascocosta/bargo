@@ -12,7 +12,7 @@ use std::{
 
 const AUTOEXEC: &str = "autoexec.txt";
 const EMU: &str = "fab-agon-emulator";
-const EMU_ARGS: &str = "-f";
+const EMU_ARGS: [&str; 3] = ["-f", "--sdcard", "./sdcard"];
 const GIT: &str = "git";
 const HELLO: &str = "PRINT \"Hello World!\"";
 const MAIN: &str = "main.bas";
@@ -252,7 +252,7 @@ impl BargoCommand for EmuCommand {
         let current_dir = path.clone();
         path.push(EMU);
         Command::new(path)
-            .arg(EMU_ARGS)
+            .args(EMU_ARGS)
             .current_dir(current_dir)
             .output()
             .map_err(|_| "Could not run emulator")?;
