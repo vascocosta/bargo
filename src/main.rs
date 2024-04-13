@@ -4,17 +4,17 @@ use bargo::commands::{
 use std::env;
 
 enum Action {
-    ADD,
-    NEW,
-    UNKNOWN,
+    Add,
+    New,
+    Unknown,
 }
 
 fn show_usage(action: Option<Action>) {
     println!("BASIC build system and package manager\n");
     match action {
-        Some(Action::ADD) => println!("Usage: bargo add <dependency>\n"),
-        Some(Action::NEW) => println!("Usage: bargo new <name>\n"),
-        Some(Action::UNKNOWN) => println!("Usage: bargo <new|build>\n"),
+        Some(Action::Add) => println!("Usage: bargo add <dependency>\n"),
+        Some(Action::New) => println!("Usage: bargo new <name>\n"),
+        Some(Action::Unknown) => println!("Usage: bargo <new|build>\n"),
         None => println!("Usage: bargo <new|build>\n"),
     }
     println!("Commands:");
@@ -39,7 +39,7 @@ fn main() {
                     }
                     Err(error) => eprintln!("{error}"),
                 },
-                None => show_usage(Some(Action::ADD)),
+                None => show_usage(Some(Action::Add)),
             },
             "build" => match BuildCommand::new() {
                 Ok(build_command) => {
@@ -80,9 +80,9 @@ fn main() {
                         eprintln!("{error}");
                     }
                 }
-                None => show_usage(Some(Action::NEW)),
+                None => show_usage(Some(Action::New)),
             },
-            _ => show_usage(Some(Action::UNKNOWN)),
+            _ => show_usage(Some(Action::Unknown)),
         },
         None => show_usage(None),
     }
