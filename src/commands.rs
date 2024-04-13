@@ -72,7 +72,12 @@ impl BuildCommand {
             lines.push(format!(":"));
 
             let path = format!("{}/{}.bas", SRC, filename);
-            let f = File::open(&path).map_err(|_| format!("Could not open {}", &path))?;
+            let f = File::open(&path).map_err(|_| {
+                format!(
+                    "Could not open {}\nMake sure this dep exists in src/",
+                    &path
+                )
+            })?;
 
             for line in BufReader::new(f).lines() {
                 lines.push(line?)
@@ -218,12 +223,18 @@ impl BargoCommand for EmuCommand {
         let mut path = self.config.package.emu_path.clone();
 
         if !path.exists() {
-            return Err(format!("Could not find emulator in {}", path.to_string_lossy()).into());
+            return Err(format!(
+                "Could not find the emulator in {}\nSpecify the full path to the emulator's folder in {}",
+                path.to_string_lossy(),
+                TOML
+            )
+            .into());
         }
 
         path.push(format!("sdcard/{}.bas", self.config.package.name));
-        fs::copy(format!("{}.bas", self.config.package.name), &path)
-            .map_err(|_| "Could not copy source to emulator")?;
+        fs::copy(format!("{}.bas", self.config.package.name), &path).map_err(|_| {
+            "Could not copy source to emulator\nGo to project's root folder and/or build first"
+        })?;
 
         path.pop();
         path.push(AUTOEXEC);
