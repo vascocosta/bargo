@@ -242,7 +242,7 @@ impl BargoCommand for EmuCommand {
             .map_err(|_| format!("Could not create {}", &path.to_string_lossy()))?;
         write!(
             output,
-            "load bbcbasic.bin\r\nrun . /{}.bas\r\n",
+            "load /bin/bbcbasic.bin\r\nrun . /{}.bas\r\n",
             self.config.package.name
         )
         .map_err(|_| format!("Could not write to {}", &path.to_string_lossy()))?;
