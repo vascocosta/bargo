@@ -111,6 +111,7 @@ impl BuildCommand {
         let padding = (lines.len() * self.config.package.numbering)
             .to_string()
             .len();
+
         lines
             .iter()
             .enumerate()
