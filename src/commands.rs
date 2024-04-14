@@ -1,4 +1,5 @@
 use crate::config::Config;
+use reqwest::blocking::get;
 use std::{
     cell::RefCell,
     collections::HashMap,
@@ -61,10 +62,28 @@ impl BuildCommand {
         })
     }
 
-    fn read_deps(&self, deps: &HashMap<String, String>) -> Result<Vec<String>, Box<dyn Error>> {
+    fn fetch_dep(&self, url: &str, filename: &str) -> Result<(), Box<dyn Error>> {
+        let response = get(url).map_err(|_| format!("Could not fetch {}", url))?;
+        let body = response.text()?;
+        let mut output =
+            File::create(filename).map_err(|_| format!("Could not create {}", filename))?;
+        write!(output, "{}", body).map_err(|_| format!("Could not write to {}", filename))?;
+        println!("\tFetched {} to {}", url, filename);
+
+        Ok(())
+    }
+
+    fn read_deps(
+        &self,
+        deps: &HashMap<String, Option<String>>,
+    ) -> Result<Vec<String>, Box<dyn Error>> {
         let mut lines: Vec<String> = Vec::new();
 
-        for filename in deps.keys() {
+        for (filename, url) in deps {
+            if let Some(url) = url {
+                self.fetch_dep(url, &format!("src/{}.bas", filename))?;
+            }
+
             lines.push(format!(":"));
             lines.push(format!("REM {}", "=".repeat(76)));
             lines.push(format!("REM IMPORT {}.BAS", filename.to_uppercase()));
@@ -279,7 +298,7 @@ impl<'a> BargoCommand for AddCommand<'a> {
     fn execute(&self) -> Result<(), Box<dyn Error>> {
         let mut config = self.config.borrow_mut();
         let mut dependencies = config.dependencies.clone().unwrap_or_default();
-        dependencies.insert(String::from(self.dependency), String::from("0.1.0"));
+        dependencies.insert(String::from(self.dependency), None);
         config.dependencies = Some(dependencies);
         config.write(TOML)?;
 

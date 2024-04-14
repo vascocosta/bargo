@@ -10,7 +10,7 @@ const EMU: &str = "fab-agon-emulator";
 #[derive(Deserialize, Serialize)]
 pub struct Config {
     pub package: Package,
-    pub dependencies: Option<HashMap<String, String>>,
+    pub dependencies: Option<HashMap<String, Option<String>>>,
 }
 
 impl Config {
