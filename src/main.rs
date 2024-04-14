@@ -28,10 +28,10 @@ fn show_usage(action: Option<Action>) {
 fn main() {
     let args: Vec<String> = env::args().skip(1).collect();
 
-    match args.get(0) {
+    match args.first() {
         Some(action) => match action.as_str() {
             "add" => match args.get(1) {
-                Some(dependency) => match AddCommand::new(&dependency) {
+                Some(dependency) => match AddCommand::new(dependency) {
                     Ok(add_command) => {
                         if let Err(error) = add_command.execute() {
                             eprintln!("{error}")

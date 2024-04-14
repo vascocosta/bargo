@@ -85,11 +85,11 @@ impl BuildCommand {
                 self.fetch_dep(url, &format!("src/{}.bas", filename))?;
             }
 
-            lines.push(format!(":"));
+            lines.push(String::from(":"));
             lines.push(format!("REM {}", "=".repeat(76)));
             lines.push(format!("REM IMPORT {}.BAS", filename.to_uppercase()));
             lines.push(format!("REM {}", "=".repeat(76)));
-            lines.push(format!(":"));
+            lines.push(String::from(":"));
 
             let path = format!("{}/{}.bas", SRC, filename);
             let f = File::open(&path).map_err(|_| {
@@ -118,7 +118,7 @@ impl BuildCommand {
                 format!(
                     "{: >padding$} {}",
                     (number + 1) * self.config.package.numbering,
-                    if line.to_uppercase().starts_with("REM") && line.ends_with("=") {
+                    if line.to_uppercase().starts_with("REM") && line.ends_with('=') {
                         &line[..WIDTH - padding]
                     } else {
                         line
