@@ -74,14 +74,11 @@ impl BuildCommand {
         Ok(())
     }
 
-    fn read_deps(
-        &self,
-        deps: &HashMap<String, Option<String>>,
-    ) -> Result<Vec<String>, Box<dyn Error>> {
+    fn read_deps(&self, deps: &HashMap<String, String>) -> Result<Vec<String>, Box<dyn Error>> {
         let mut lines: Vec<String> = Vec::new();
 
         for (filename, url) in deps {
-            if let Some(url) = url {
+            if !url.is_empty() {
                 self.fetch_dep(url, &format!("src/{}.bas", filename))?;
             }
 
@@ -308,7 +305,7 @@ impl<'a> BargoCommand for AddCommand<'a> {
     fn execute(&self) -> Result<(), Box<dyn Error>> {
         let mut config = self.config.borrow_mut();
         let mut dependencies = config.dependencies.clone().unwrap_or_default();
-        dependencies.insert(String::from(self.dependency), None);
+        dependencies.insert(String::from(self.dependency), String::default());
         config.dependencies = Some(dependencies);
         config.write(TOML)?;
 
