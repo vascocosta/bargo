@@ -19,6 +19,7 @@ const HELLO: &str = "PRINT \"Hello World!\"";
 const MAIN: &str = "main.bas";
 const SRC: &str = "src";
 const TOML: &str = "Bargo.toml";
+const WIDTH: usize = 80;
 
 pub trait BargoCommand {
     fn execute(&self) -> Result<(), Box<dyn Error>>;
@@ -105,6 +106,27 @@ impl BuildCommand {
 
         Ok(lines)
     }
+
+    fn format_lines(&self, lines: &[String]) -> Vec<String> {
+        let padding = (lines.len() * self.config.package.numbering)
+            .to_string()
+            .len();
+        lines
+            .iter()
+            .enumerate()
+            .map(|(number, line)| {
+                format!(
+                    "{: >padding$} {}",
+                    (number + 1) * self.config.package.numbering,
+                    if line.to_uppercase().starts_with("REM") && line.ends_with("=") {
+                        &line[..WIDTH - padding]
+                    } else {
+                        line
+                    }
+                )
+            })
+            .collect()
+    }
 }
 
 impl BargoCommand for BuildCommand {
@@ -127,24 +149,11 @@ impl BargoCommand for BuildCommand {
             lines.push(line);
         }
 
-        let padding = (lines.len() * self.config.package.numbering)
-            .to_string()
-            .len();
-        let numbered_lines: Vec<String> = lines
-            .into_iter()
-            .enumerate()
-            .map(|(number, line)| {
-                format!(
-                    "{: >padding$} {}",
-                    (number + 1) * self.config.package.numbering,
-                    line
-                )
-            })
-            .collect();
+        let formatted_lines = self.format_lines(&lines);
         let path = format!("{}.bas", self.config.package.name);
         let mut output = File::create(&path).map_err(|_| format!("Could not create {}", &path))?;
 
-        for line in &numbered_lines {
+        for line in &formatted_lines {
             write!(
                 output,
                 "{}{}",
