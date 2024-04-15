@@ -23,37 +23,40 @@ const WIDTH: usize = 80;
 
 pub trait BargoCommand {
     fn execute(&self) -> Result<(), Box<dyn Error>>;
-    fn usage() -> String;
+    fn usage(action: Action) -> String;
 }
 
-pub struct AddCommand<'a> {
-    dependency: &'a str,
-    config: RefCell<Config>,
+#[derive(Debug)]
+struct BargoError {
+    message: String,
 }
 
-impl<'a> AddCommand<'a> {
-    pub fn new(dependency: &'a str) -> Result<Self, Box<dyn Error>> {
-        Ok(Self {
-            config: RefCell::new(Config::read(TOML)?),
-            dependency,
-        })
+impl BargoError {
+    fn new(message: &str) -> Self {
+        Self {
+            message: String::from(message),
+        }
     }
 }
 
-impl<'a> BargoCommand for AddCommand<'a> {
-    fn execute(&self) -> Result<(), Box<dyn Error>> {
-        let mut config = self.config.borrow_mut();
-        let mut dependencies = config.dependencies.clone().unwrap_or_default();
-        dependencies.insert(String::from(self.dependency), String::default());
-        config.dependencies = Some(dependencies);
-        config.write(TOML)?;
-
-        Ok(())
+impl std::fmt::Display for BargoError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.message)
     }
+}
 
-    fn usage() -> String {
-        String::from("\tadd\tAdd dependencies to this package")
+impl Error for BargoError {
+    fn description(&self) -> &str {
+        &self.message
     }
+}
+
+pub enum Action {
+    DepAdd,
+    DepRemove,
+    Init,
+    New,
+    Unknown,
 }
 
 pub struct BuildCommand {
@@ -174,8 +177,54 @@ impl BargoCommand for BuildCommand {
         Ok(())
     }
 
-    fn usage() -> String {
+    fn usage(_: Action) -> String {
         String::from("\tbuild\tBuild the current package")
+    }
+}
+
+pub struct DepCommand<'a> {
+    action: Action,
+    dependency: &'a str,
+    config: RefCell<Config>,
+}
+
+impl<'a> DepCommand<'a> {
+    pub fn new(dependency: &'a str, action: Action) -> Result<Self, Box<dyn Error>> {
+        Ok(Self {
+            action,
+            config: RefCell::new(Config::read(TOML)?),
+            dependency,
+        })
+    }
+}
+
+impl<'a> BargoCommand for DepCommand<'a> {
+    fn execute(&self) -> Result<(), Box<dyn Error>> {
+        let mut config = self.config.borrow_mut();
+        let mut dependencies = config.dependencies.clone().unwrap_or_default();
+        match self.action {
+            Action::DepAdd => {
+                println!("\tAdding {} dependency", self.dependency);
+                dependencies.insert(String::from(self.dependency), String::default());
+            }
+            Action::DepRemove => {
+                println!("\tRemoving {} dependency", self.dependency);
+                dependencies.remove(self.dependency);
+            }
+            _ => return Err(Box::new(BargoError::new("Unknown action"))),
+        };
+        config.dependencies = Some(dependencies);
+        config.write(TOML)?;
+        println!("\tFinished");
+        Ok(())
+    }
+
+    fn usage(action: Action) -> String {
+        match action {
+            Action::DepAdd => String::from("\tadd\tAdd dependencies to this package"),
+            Action::DepRemove => String::from("\tremove\tRemove dependencies from this package"),
+            _ => String::default(),
+        }
     }
 }
 
@@ -200,7 +249,7 @@ impl BargoCommand for CleanCommand {
         Ok(())
     }
 
-    fn usage() -> String {
+    fn usage(_: Action) -> String {
         String::from("\tclean\tRemove the generated file")
     }
 }
@@ -255,7 +304,7 @@ impl BargoCommand for EmuCommand {
         Ok(())
     }
 
-    fn usage() -> String {
+    fn usage(_: Action) -> String {
         String::from("\temu\tRun the code inside an emulator")
     }
 }
@@ -308,11 +357,13 @@ impl<'a> BargoCommand for NewCommand<'a> {
         Ok(())
     }
 
-    fn usage() -> String {
-        format!(
-            "{}\n{}",
-            "\tinit\tCreate a new Bargo package in an existing directory",
-            "\tnew\tCreate a new Bargo package"
-        )
+    fn usage(action: Action) -> String {
+        match action {
+            Action::New => String::from("\tnew\tCreate a new Bargo package"),
+            Action::Init => {
+                String::from("\tinit\tCreate a new Bargo package in an existing directory")
+            }
+            _ => String::default(),
+        }
     }
 }

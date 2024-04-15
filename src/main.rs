@@ -1,28 +1,26 @@
 use bargo::commands::{
-    AddCommand, BargoCommand, BuildCommand, CleanCommand, EmuCommand, NewCommand,
+    Action, BargoCommand, BuildCommand, CleanCommand, DepCommand, EmuCommand, NewCommand,
 };
 use std::env;
-
-enum Action {
-    Add,
-    New,
-    Unknown,
-}
 
 fn show_usage(action: Option<Action>) {
     println!("BASIC build system and package manager\n");
     match action {
-        Some(Action::Add) => println!("Usage: bargo add <dependency>\n"),
+        Some(Action::DepAdd) => println!("Usage: bargo add <dependency>\n"),
         Some(Action::New) => println!("Usage: bargo new <name>\n"),
+        Some(Action::DepRemove) => println!("Usage: bargo remove <dependency>\n"),
         Some(Action::Unknown) => println!("Usage: bargo <new|build>\n"),
+        Some(_) => (),
         None => println!("Usage: bargo <new|build>\n"),
     }
     println!("Commands:");
-    println!("{}", AddCommand::usage());
-    println!("{}", BuildCommand::usage());
-    println!("{}", CleanCommand::usage());
-    println!("{}", EmuCommand::usage());
-    println!("{}", NewCommand::usage());
+    println!("{}", DepCommand::usage(Action::DepAdd));
+    println!("{}", BuildCommand::usage(Action::Unknown));
+    println!("{}", CleanCommand::usage(Action::Unknown));
+    println!("{}", EmuCommand::usage(Action::Unknown));
+    println!("{}", NewCommand::usage(Action::Init));
+    println!("{}", NewCommand::usage(Action::New));
+    println!("{}", DepCommand::usage(Action::DepRemove));
 }
 
 fn main() {
@@ -31,7 +29,7 @@ fn main() {
     match args.first() {
         Some(action) => match action.as_str() {
             "add" => match args.get(1) {
-                Some(dependency) => match AddCommand::new(dependency) {
+                Some(dependency) => match DepCommand::new(dependency, Action::DepAdd) {
                     Ok(add_command) => {
                         if let Err(error) = add_command.execute() {
                             eprintln!("{error}")
@@ -39,7 +37,7 @@ fn main() {
                     }
                     Err(error) => eprintln!("{error}"),
                 },
-                None => show_usage(Some(Action::Add)),
+                None => show_usage(Some(Action::DepAdd)),
             },
             "build" => match BuildCommand::new() {
                 Ok(build_command) => {
@@ -81,6 +79,17 @@ fn main() {
                     }
                 }
                 None => show_usage(Some(Action::New)),
+            },
+            "remove" => match args.get(1) {
+                Some(dependency) => match DepCommand::new(dependency, Action::DepRemove) {
+                    Ok(remove_command) => {
+                        if let Err(error) = remove_command.execute() {
+                            eprintln!("{error}")
+                        }
+                    }
+                    Err(error) => eprintln!("{error}"),
+                },
+                None => show_usage(Some(Action::DepRemove)),
             },
             _ => show_usage(Some(Action::Unknown)),
         },
