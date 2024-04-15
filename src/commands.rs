@@ -26,29 +26,33 @@ pub trait BargoCommand {
     fn usage() -> String;
 }
 
-pub struct CleanCommand {
-    config: Config,
+pub struct AddCommand<'a> {
+    dependency: &'a str,
+    config: RefCell<Config>,
 }
 
-impl CleanCommand {
-    pub fn new() -> Result<Self, Box<dyn Error>> {
+impl<'a> AddCommand<'a> {
+    pub fn new(dependency: &'a str) -> Result<Self, Box<dyn Error>> {
         Ok(Self {
-            config: Config::read(TOML)?,
+            config: RefCell::new(Config::read(TOML)?),
+            dependency,
         })
     }
 }
 
-impl BargoCommand for CleanCommand {
+impl<'a> BargoCommand for AddCommand<'a> {
     fn execute(&self) -> Result<(), Box<dyn Error>> {
-        let path = format!("{}.bas", self.config.package.name);
-        fs::remove_file(&path).map_err(|_| format!("Could not remove {}", &path))?;
-        println!("\tRemoved {}.bas", self.config.package.name);
+        let mut config = self.config.borrow_mut();
+        let mut dependencies = config.dependencies.clone().unwrap_or_default();
+        dependencies.insert(String::from(self.dependency), String::default());
+        config.dependencies = Some(dependencies);
+        config.write(TOML)?;
 
         Ok(())
     }
 
     fn usage() -> String {
-        String::from("\tclean\tRemove the generated file")
+        String::from("\tadd\tAdd dependencies to this package")
     }
 }
 
@@ -175,60 +179,29 @@ impl BargoCommand for BuildCommand {
     }
 }
 
-pub struct NewCommand<'a> {
-    name: Option<&'a str>,
+pub struct CleanCommand {
+    config: Config,
 }
 
-impl<'a> NewCommand<'a> {
-    pub fn new(name: Option<&'a str>) -> Self {
-        Self { name }
+impl CleanCommand {
+    pub fn new() -> Result<Self, Box<dyn Error>> {
+        Ok(Self {
+            config: Config::read(TOML)?,
+        })
     }
 }
 
-impl<'a> BargoCommand for NewCommand<'a> {
+impl BargoCommand for CleanCommand {
     fn execute(&self) -> Result<(), Box<dyn Error>> {
-        let name = self.name.unwrap_or(".");
-        let path = format!("{}/{}", name, SRC);
-
-        if Path::new(&path).exists() {
-            return Err("Package already exists".into());
-        }
-
-        fs::create_dir_all(&path).map_err(|_| format!("Could not create {}", &path))?;
-
-        let mut config = Config::default();
-        let path = format!("{}/{}", name, TOML);
-        config.package.name = if name != "." {
-            String::from(name)
-        } else {
-            let current_dir = env::current_dir().map_err(|_| "Could not get cwd")?;
-            let file_name = current_dir.file_name().ok_or("Could not get cwd")?;
-            let name = file_name.to_str().ok_or("Could not get cwd")?;
-            String::from(name)
-        };
-        config.write(path)?;
-
-        let path = format!("{}/{}/{}", name, SRC, MAIN);
-        let mut output = File::create(&path).map_err(|_| format!("Could not create {}", &path))?;
-        write!(output, "{}", HELLO).map_err(|_| format!("Could not write to {}", &path))?;
-
-        println!("\tCreated `{}` package", config.package.name);
-
-        Command::new(GIT)
-            .arg("init")
-            .current_dir(name)
-            .output()
-            .map_err(|_| "Could not run git to init repo")?;
+        let path = format!("{}.bas", self.config.package.name);
+        fs::remove_file(&path).map_err(|_| format!("Could not remove {}", &path))?;
+        println!("\tRemoved {}.bas", self.config.package.name);
 
         Ok(())
     }
 
     fn usage() -> String {
-        format!(
-            "{}\n{}",
-            "\tinit\tCreate a new Bargo package in an existing directory",
-            "\tnew\tCreate a new Bargo package"
-        )
+        String::from("\tclean\tRemove the generated file")
     }
 }
 
@@ -287,32 +260,59 @@ impl BargoCommand for EmuCommand {
     }
 }
 
-pub struct AddCommand<'a> {
-    dependency: &'a str,
-    config: RefCell<Config>,
+pub struct NewCommand<'a> {
+    name: Option<&'a str>,
 }
 
-impl<'a> AddCommand<'a> {
-    pub fn new(dependency: &'a str) -> Result<Self, Box<dyn Error>> {
-        Ok(Self {
-            config: RefCell::new(Config::read(TOML)?),
-            dependency,
-        })
+impl<'a> NewCommand<'a> {
+    pub fn new(name: Option<&'a str>) -> Self {
+        Self { name }
     }
 }
 
-impl<'a> BargoCommand for AddCommand<'a> {
+impl<'a> BargoCommand for NewCommand<'a> {
     fn execute(&self) -> Result<(), Box<dyn Error>> {
-        let mut config = self.config.borrow_mut();
-        let mut dependencies = config.dependencies.clone().unwrap_or_default();
-        dependencies.insert(String::from(self.dependency), String::default());
-        config.dependencies = Some(dependencies);
-        config.write(TOML)?;
+        let name = self.name.unwrap_or(".");
+        let path = format!("{}/{}", name, SRC);
+
+        if Path::new(&path).exists() {
+            return Err("Package already exists".into());
+        }
+
+        fs::create_dir_all(&path).map_err(|_| format!("Could not create {}", &path))?;
+
+        let mut config = Config::default();
+        let path = format!("{}/{}", name, TOML);
+        config.package.name = if name != "." {
+            String::from(name)
+        } else {
+            let current_dir = env::current_dir().map_err(|_| "Could not get cwd")?;
+            let file_name = current_dir.file_name().ok_or("Could not get cwd")?;
+            let name = file_name.to_str().ok_or("Could not get cwd")?;
+            String::from(name)
+        };
+        config.write(path)?;
+
+        let path = format!("{}/{}/{}", name, SRC, MAIN);
+        let mut output = File::create(&path).map_err(|_| format!("Could not create {}", &path))?;
+        write!(output, "{}", HELLO).map_err(|_| format!("Could not write to {}", &path))?;
+
+        println!("\tCreated `{}` package", config.package.name);
+
+        Command::new(GIT)
+            .arg("init")
+            .current_dir(name)
+            .output()
+            .map_err(|_| "Could not run git to init repo")?;
 
         Ok(())
     }
 
     fn usage() -> String {
-        String::from("\tadd\tAdd dependencies to this package")
+        format!(
+            "{}\n{}",
+            "\tinit\tCreate a new Bargo package in an existing directory",
+            "\tnew\tCreate a new Bargo package"
+        )
     }
 }
