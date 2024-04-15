@@ -117,7 +117,7 @@ impl BuildCommand {
                     "{: >padding$} {}",
                     (number + 1) * self.config.package.numbering,
                     if line.to_uppercase().starts_with("REM") && line.ends_with('=') {
-                        line.chars().take(WIDTH - padding).collect()
+                        line.chars().take(WIDTH - (padding + 3)).collect()
                     } else {
                         line.clone()
                     }
