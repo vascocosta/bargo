@@ -5,14 +5,16 @@ use std::env;
 
 fn show_usage(action: Option<Action>) {
     println!("BASIC build system and package manager\n");
+
     match action {
-        Some(Action::DepAdd) => println!("Usage: bargo add <dependency>\n"),
-        Some(Action::New) => println!("Usage: bargo new <name>\n"),
-        Some(Action::DepRemove) => println!("Usage: bargo remove <dependency>\n"),
-        Some(Action::Unknown) => println!("Usage: bargo <new|build>\n"),
+        Some(Action::DepAdd) => println!("Usage: bargo add <DEP>\n"),
+        Some(Action::New) => println!("Usage: bargo new <NAME>\n"),
+        Some(Action::DepRemove) => println!("Usage: bargo remove <DEP>\n"),
+        Some(Action::Unknown) => println!("Usage: [COMMAND]\n"),
         Some(_) => (),
-        None => println!("Usage: bargo <new|build>\n"),
+        None => println!("Usage: [COMMAND]\n"),
     }
+
     println!("Commands:");
     println!("{}", DepCommand::usage(Some(Action::DepAdd)));
     println!("{}", BuildCommand::usage(None));
