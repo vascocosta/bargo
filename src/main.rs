@@ -14,13 +14,13 @@ fn show_usage(action: Option<Action>) {
         None => println!("Usage: bargo <new|build>\n"),
     }
     println!("Commands:");
-    println!("{}", DepCommand::usage(Action::DepAdd));
-    println!("{}", BuildCommand::usage(Action::Unknown));
-    println!("{}", CleanCommand::usage(Action::Unknown));
-    println!("{}", EmuCommand::usage(Action::Unknown));
-    println!("{}", NewCommand::usage(Action::Init));
-    println!("{}", NewCommand::usage(Action::New));
-    println!("{}", DepCommand::usage(Action::DepRemove));
+    println!("{}", DepCommand::usage(Some(Action::DepAdd)));
+    println!("{}", BuildCommand::usage(None));
+    println!("{}", CleanCommand::usage(None));
+    println!("{}", EmuCommand::usage(None));
+    println!("{}", NewCommand::usage(Some(Action::Init)));
+    println!("{}", NewCommand::usage(Some(Action::New)));
+    println!("{}", DepCommand::usage(Some(Action::DepRemove)));
 }
 
 fn main() {

@@ -23,7 +23,7 @@ const WIDTH: usize = 80;
 
 pub trait BargoCommand {
     fn execute(&self) -> Result<(), Box<dyn Error>>;
-    fn usage(action: Action) -> String;
+    fn usage(action: Option<Action>) -> String;
 }
 
 #[derive(Debug)]
@@ -177,7 +177,7 @@ impl BargoCommand for BuildCommand {
         Ok(())
     }
 
-    fn usage(_: Action) -> String {
+    fn usage(_: Option<Action>) -> String {
         String::from("\tbuild\tBuild the current package")
     }
 }
@@ -219,10 +219,12 @@ impl<'a> BargoCommand for DepCommand<'a> {
         Ok(())
     }
 
-    fn usage(action: Action) -> String {
+    fn usage(action: Option<Action>) -> String {
         match action {
-            Action::DepAdd => String::from("\tadd\tAdd dependencies to this package"),
-            Action::DepRemove => String::from("\tremove\tRemove dependencies from this package"),
+            Some(Action::DepAdd) => String::from("\tadd\tAdd dependencies to this package"),
+            Some(Action::DepRemove) => {
+                String::from("\tremove\tRemove dependencies from this package")
+            }
             _ => String::default(),
         }
     }
@@ -249,7 +251,7 @@ impl BargoCommand for CleanCommand {
         Ok(())
     }
 
-    fn usage(_: Action) -> String {
+    fn usage(_: Option<Action>) -> String {
         String::from("\tclean\tRemove the generated file")
     }
 }
@@ -304,7 +306,7 @@ impl BargoCommand for EmuCommand {
         Ok(())
     }
 
-    fn usage(_: Action) -> String {
+    fn usage(_: Option<Action>) -> String {
         String::from("\temu\tRun the code inside an emulator")
     }
 }
@@ -357,10 +359,10 @@ impl<'a> BargoCommand for NewCommand<'a> {
         Ok(())
     }
 
-    fn usage(action: Action) -> String {
+    fn usage(action: Option<Action>) -> String {
         match action {
-            Action::New => String::from("\tnew\tCreate a new Bargo package"),
-            Action::Init => {
+            Some(Action::New) => String::from("\tnew\tCreate a new Bargo package"),
+            Some(Action::Init) => {
                 String::from("\tinit\tCreate a new Bargo package in an existing directory")
             }
             _ => String::default(),
