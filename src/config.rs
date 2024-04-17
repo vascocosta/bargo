@@ -53,6 +53,7 @@ impl Default for Config {
 pub struct Package {
     pub name: String,
     pub carriage_return: bool,
+    pub labels: bool,
     pub numbering: usize,
     pub emu_path: PathBuf,
     pub version: String,
@@ -68,6 +69,7 @@ impl Default for Package {
         Self {
             name: String::new(),
             carriage_return: true,
+            labels: false,
             numbering: 10,
             emu_path,
             version: String::from("0.1.0"),

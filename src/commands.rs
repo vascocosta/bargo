@@ -115,6 +115,19 @@ impl BuildCommand {
         let padding = (lines.len() * self.config.package.numbering)
             .to_string()
             .len();
+        let mut labels = HashMap::new();
+
+        if self.config.package.labels {
+            for (number, line) in lines.iter().enumerate() {
+                if line.starts_with("LABEL") {
+                    let label = line.trim_start_matches("LABEL ");
+                    labels.insert(
+                        String::from(label),
+                        (number + 2) * self.config.package.numbering,
+                    );
+                }
+            }
+        }
 
         lines
             .iter()
@@ -123,10 +136,28 @@ impl BuildCommand {
                 format!(
                     "{: >padding$} {}",
                     (number + 1) * self.config.package.numbering,
-                    if line.to_uppercase().starts_with("REM") && line.ends_with('=') {
+                    if line.to_uppercase().starts_with("LABEL") {
+                        String::from(":")
+                    } else if line.to_uppercase().starts_with("REM") && line.ends_with('=') {
                         line.chars().take(WIDTH - (padding + 3)).collect()
                     } else {
-                        line.clone()
+                        let mut new_line = line.clone();
+                        if self.config.package.labels {
+                            for (label, number) in &labels {
+                                new_line = new_line.replace(
+                                    &format!("GOTO {}", label),
+                                    &format!("GOTO {}", number),
+                                );
+                                new_line = new_line.replace(
+                                    &format!("GOSUB {}", label),
+                                    &format!("GOSUB {}", number),
+                                );
+                            }
+
+                            new_line
+                        } else {
+                            new_line
+                        }
                     }
                 )
             })
