@@ -6,6 +6,7 @@ use std::path::Path;
 use std::{collections::HashMap, env, error::Error, fs::File, path::PathBuf};
 
 const EMU: &str = "fab-agon-emulator";
+const WITDH: usize = 80;
 
 #[derive(Deserialize, Serialize)]
 pub struct Config {
@@ -55,6 +56,7 @@ pub struct Package {
     pub carriage_return: bool,
     pub labels: bool,
     pub numbering: usize,
+    pub width: usize,
     pub emu_path: PathBuf,
     pub version: String,
 }
@@ -71,6 +73,7 @@ impl Default for Package {
             carriage_return: true,
             labels: false,
             numbering: 10,
+            width: WITDH,
             emu_path,
             version: String::from("0.1.0"),
         }

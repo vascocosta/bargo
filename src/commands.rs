@@ -19,7 +19,6 @@ const HELLO: &str = "PRINT \"Hello World!\"";
 const MAIN: &str = "main.bas";
 const SRC: &str = "src";
 const TOML: &str = "Bargo.toml";
-const WIDTH: usize = 80;
 
 pub trait BargoCommand {
     fn execute(&self) -> Result<(), Box<dyn Error>>;
@@ -139,7 +138,9 @@ impl BuildCommand {
                     if line.to_uppercase().starts_with("LABEL") {
                         String::from(":")
                     } else if line.to_uppercase().starts_with("REM") && line.ends_with('=') {
-                        line.chars().take(WIDTH - (padding + 3)).collect()
+                        line.chars()
+                            .take(self.config.package.width - (padding + 3))
+                            .collect()
                     } else {
                         let mut new_line = line.clone();
                         if self.config.package.labels {
