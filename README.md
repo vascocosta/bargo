@@ -74,7 +74,7 @@ numbering = 10
 version = "0.1.0"
 
 [dependencies]
-utils = "0.1.0
+utils = ""
 ```
 
 ### src/main.bas
